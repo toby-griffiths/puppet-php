@@ -7,12 +7,6 @@
 class php::global($version = undef) {
   include php::config
 
-  # Default to latest version of PHP 5 if not specified
-  $php_version = $version ? {
-    undef   => 5,
-    default => $version
-  }
-
   # Current supported and secure versions
   $secure_5_6 = $php::config::secure_versions['5.6']
   $secure_5_5 = $php::config::secure_versions['5.5']
