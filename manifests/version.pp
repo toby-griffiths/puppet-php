@@ -76,46 +76,42 @@ define php::version(
         $version_config_root,
         $version_data_root,
       ]:
-      ensure => absent,
-      force  => true
+        ensure => absent,
+        force  => true
     }
 
   } else {
 
     # Data directory
-    file { $version_data_root:
-      ensure => directory,
-    }
+    ensure_resource('file', $version_data_root, { ensure => directory })
 
     # Set up config directories
-    file { $version_config_root:
-      ensure => directory,
-    }
+    ensure_resource('file', $version_config_root, { ensure => directory })
 
-    file { $conf_d:
+    ensure_resource('file', $conf_d, {
       ensure  => directory,
       purge   => true,
       force   => true,
       require => File[$version_config_root],
-    }
+    })
 
     # Ensure module dir is created for extensions AFTER php is installed
-    file { $module_dir:
+    ensure_resource('file', $module_dir, {
       ensure  => directory,
       require => Php_version[$patch_version],
-    }
+    })
 
     # Set up config files
-    file { $php_ini:
+    ensure_resource('file', $php_ini, {
       content => template('php/php.ini.erb'),
-      require => File[$version_config_root]
-    }
+      require => File[$version_config_root],
+    })
 
     # Log files
-    file { $error_log:
+    ensure_resource('file', $error_log, {
       owner => $::boxen_user,
       mode  => '0644',
-    }
+    })
 
     # Install PHP!
 
@@ -125,7 +121,7 @@ define php::version(
       $configure_params = $test_params[$patch_version]
     }
 
-    php_version { $patch_version:
+    ensure_resource('php_version', $patch_version, {
       user              => $::boxen_user,
       user_home         => "/Users/${::boxen_user}",
       phpenv_root       => $php::config::root,
@@ -146,61 +142,61 @@ define php::version(
       ],
       notify            => Exec["phpenv-rehash-post-install-${patch_version}"],
       configure_params  => $configure_params,
-    }
+    })
 
     # Fix permissions for php versions installed prior to 0.3.5 of this module
-    file { $dest:
+    ensure_resource('file', $dest, {
       ensure  => directory,
       owner   => $::boxen_user,
       group   => 'staff',
       recurse => true,
       require => Php_version[$patch_version],
-    }
+    })
 
     # Rehash phpenv shims when a new version is installed
-    exec { "phpenv-rehash-post-install-${patch_version}":
+    ensure_resource('exec', "phpenv-rehash-post-install-${patch_version}", {
       command     => "/bin/rm -rf ${php::config::root}/shims && PHPENV_ROOT=${php::config::root} ${php::config::root}/bin/phpenv rehash",
       require     => Php_version[$patch_version],
       refreshonly => true,
-    }
+    })
 
     # PEAR cruft
 
     # Ensure per version PEAR cache folder is present
-    file { "${version_data_root}/cache":
+    ensure_resource('file', "${version_data_root}/cache", {
       ensure  => directory,
       require => File[$version_data_root],
-    }
+    })
 
     # Set cache_dir for PEAR
-    exec { "pear-${patch_version}-cache_dir":
-      command => "${dest}/bin/pear config-set cache_dir ${php::config::datadir}/pear",
-      unless  => "${dest}/bin/pear config-get cache_dir | grep -i ${php::config::datadir}/pear",
-      require => [
+    ensure_resource('exec', "pear-${patch_version}-cache_dir", {
+      'command' => "${dest}/bin/pear config-set cache_dir ${php::config::datadir}/pear",
+      'unless'  => "${dest}/bin/pear config-get cache_dir | grep -i ${php::config::datadir}/pear",
+      'require' => [
         Php_version[$patch_version],
         File["${php::config::datadir}/pear"],
       ],
-    }
+    })
 
     # Set download_dir for PEAR
-    exec { "pear-${patch_version}-download_dir":
-      command => "${dest}/bin/pear config-set download_dir ${php::config::datadir}/pear",
-      unless  => "${dest}/bin/pear config-get download_dir | grep -i ${php::config::datadir}/pear",
-      require => [
+    ensure_resource('exec', "pear-${patch_version}-download_dir", {
+      'command' => "${dest}/bin/pear config-set download_dir ${php::config::datadir}/pear",
+      'unless'  => "${dest}/bin/pear config-get download_dir | grep -i ${php::config::datadir}/pear",
+      'require' => [
         Php_version[$patch_version],
         File["${php::config::datadir}/pear"],
       ],
-    }
+    })
 
     # Set temp_dir for PEAR
-    exec { "pear-${patch_version}-temp_dir":
-      command => "${dest}/bin/pear config-set temp_dir ${php::config::datadir}/pear",
-      unless  => "${dest}/bin/pear config-get temp_dir | grep -i ${php::config::datadir}/pear",
-      require => [
+    ensure_resource('exec', "pear-${patch_version}-temp_dir", {
+      'command' => "${dest}/bin/pear config-set temp_dir ${php::config::datadir}/pear",
+      'unless'  => "${dest}/bin/pear config-get temp_dir | grep -i ${php::config::datadir}/pear",
+      'require' => [
         Php_version[$patch_version],
         File["${php::config::datadir}/pear"],
       ],
-    }
+    })
 
   }
 }
