@@ -46,19 +46,19 @@ define php::fpm(
     $bin = "${php::config::root}/versions/${patch_version}/sbin/php-fpm"
 
     # Set up FPM config
-    file { $fpm_config:
+    ensure_resource('file', $fpm_config, {
       content => template('php/php-fpm.conf.erb'),
       notify  => Php::Fpm::Service[$patch_version],
-    }
+    })
 
     # Set up FPM Pool config directory
-    file { $fpm_pool_config_dir:
+    ensure_resource('file', $fpm_pool_config_dir, {
       ensure  => directory,
       recurse => true,
       force   => true,
       source  => 'puppet:///modules/php/empty-conf-dir',
       require => File[$version_config_root],
-    }
+    })
 
     # Create a default pool, as FPM won't start without one
     # Listen on a fake socket for now
@@ -72,33 +72,28 @@ define php::fpm(
     $min_spare_servers = 1
     $max_spare_servers = 1
 
-    file { "${fpm_pool_config_dir}/${patch_version}.conf":
+    ensure_resource('file', "${fpm_pool_config_dir}/${patch_version}.conf", {
       content => template('php/php-fpm-pool.conf.erb'),
-    }
+    })
 
     # Launch our FPM Service
 
-    php::fpm::service{ $patch_version:
+    ensure_resource('php::fpm::service', $patch_version, {
       ensure    => running,
       subscribe => File["${fpm_pool_config_dir}/${patch_version}.conf"],
-    }
+    })
 
   } else {
 
     # Stop service and kill configs
     # Stop service first as we need to unload the plist file
 
-    file { [
-        $fpm_config,
-        $fpm_pool_config_dir,
-      ]:
+    ensure_resource('file', [$fpm_config,$fpm_pool_config_dir], {
       ensure  => absent,
       require => Php::Fpm::Service[$patch_version],
-    }
+    })
 
-    php::fpm::service{ $patch_version:
-      ensure => absent,
-    }
+    ensure_resource('php::fpm::service',  $patch_version, { ensure => absent })
   }
 
 }

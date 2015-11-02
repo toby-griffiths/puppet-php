@@ -23,9 +23,27 @@ define php::fpm::pool(
 ) {
   require php::config
 
+  # Current supported and secure versions
+  $secure_5_6 = $php::config::secure_versions['5.6']
+  $secure_5_5 = $php::config::secure_versions['5.5']
+  $secure_5_4 = $php::config::secure_versions['5.4']
+
+  # Specify secure version if no minor point specified
+  if $version == '5' {
+    $patch_version = $secure_5_6
+  } elsif $version == '5.6' {
+    $patch_version = $secure_5_6
+  } elsif $version == '5.5' {
+    $patch_version = $secure_5_5
+  } elsif $version == '5.4' {
+    $patch_version = $secure_5_4
+  } else {
+    $patch_version = $version
+  }
+
   # Set config
 
-  $fpm_pool_config_dir = "${php::config::configdir}/${version}/pool.d"
+  $fpm_pool_config_dir = "${php::config::configdir}/${patch_version}/pool.d"
   $pool_name = join(split($name, '[. ]'), '_')
 
   # Set up PHP-FPM pool
@@ -33,13 +51,13 @@ define php::fpm::pool(
   if $ensure == present {
     # Ensure that the php fpm service for this php version is installed
     # eg. php::fpm::5_4_10
-    php_fpm_require $version
+    php_fpm_require $patch_version
 
     # Create a pool config file
     file { "${fpm_pool_config_dir}/${pool_name}.conf":
       content => template($fpm_pool),
       require => File[$fpm_pool_config_dir],
-      notify  => Service["dev.php-fpm.${version}"],
+      notify  => Service["dev.php-fpm.${patch_version}"],
     }
   }
 }
