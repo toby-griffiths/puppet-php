@@ -195,22 +195,41 @@ define php::project(
   }
 
   if $php {
+
+    # Current supported and secure versions
+    $secure_5_6 = $php::config::secure_versions['5.6']
+    $secure_5_5 = $php::config::secure_versions['5.5']
+    $secure_5_4 = $php::config::secure_versions['5.4']
+
+    # Specify secure version if no minor point specified
+    if $php == '5' {
+      $php_version = $secure_5_6
+    } elsif $php == '5.6' {
+      $php_version = $secure_5_6
+    } elsif $php == '5.5' {
+      $php_version = $secure_5_5
+    } elsif $php == '5.4' {
+      $php_version = $secure_5_4
+    } else {
+      $php_version = $php
+    }
+
     # Set the local version of PHP
     php::local { $repo_dir:
-      version => $php,
+      version => $php_version,
       require => Repository[$repo_dir],
     }
 
     # Spin up a PHP-FPM pool for this project, listening on an Nginx socket
-    php::fpm::pool { "${name}-${php}":
-      version      => $php,
+    php::fpm::pool { "${name}-${php_version}":
+      version      => $php_version,
       socket_path  => "${boxen::config::socketdir}/${name}",
       require      => File["${nginx::config::sitesdir}/${name}.conf"],
       max_children => 10,
     }
 
     if $fpm_pool {
-      Php::Fpm::Pool["${name}-${php}"] {
+      Php::Fpm::Pool["${name}-${php_version}"] {
         fpm_pool => $fpm_pool
       }
     }
